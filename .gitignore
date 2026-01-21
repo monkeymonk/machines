@@ -1,0 +1,30 @@
+# Secrets and environment files
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+*.kubeconfig
+
+# Local config dirs
+.ssh/
+.gnupg/
+
+# OS/editor junk
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Host-specific overrides (keep example.sh)
+hosts/*
+!hosts/.gitkeep
+!hosts/example.sh

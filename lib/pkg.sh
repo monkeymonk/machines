@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Package manager discovery and install helpers.
+PKG_MANAGER="unknown"
+PKG_INSTALL_CMD=""
+PKG_UPDATE_CMD=""
+REPO_ROOT=${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd)}
+INSTALLERS_DIR="$REPO_ROOT/installers"
+
+command_exists() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+ensure_command() {
+  local command_name="$1"
+  local package_name="$2"
+  if command_exists "$command_name"; then
+    log_info "$command_name already installed"
+    return 0
+  fi
+  install_package "$package_name"
+}
+
+detect_pkg_manager() {
+  if command -v apt-get >/dev/null 2>&1; then
+    PKG_MANAGER="apt"
+    PKG_INSTALL_CMD="sudo apt-get install -y"
+    PKG_UPDATE_CMD="sudo apt-get update"
+  elif command -v pacman >/dev/null 2>&1; then
+    PKG_MANAGER="pacman"
+    PKG_INSTALL_CMD="sudo pacman -S --needed"
+    PKG_UPDATE_CMD="sudo pacman -Sy"
+  elif command -v brew >/dev/null 2>&1; then
+    PKG_MANAGER="brew"
+    PKG_INSTALL_CMD="brew install"
+    PKG_UPDATE_CMD="brew update"
+  else
+    log_error "No supported package manager found"
+    return 1
+  fi
+}
+
+pkg_update() {
+  local dry_run="${DRY_RUN:-false}"
+  [[ -z "$PKG_UPDATE_CMD" ]] && detect_pkg_manager
+  if [[ "$dry_run" == true ]]; then
+    log_info "Skipping package cache update (dry-run mode)"
+    return 0
+  fi
+  log_info "Updating package cache with $PKG_MANAGER"
+  local IFS=' '
+  read -r -a updater <<<"$PKG_UPDATE_CMD"
+  "${updater[@]}"
+}
+
+pkg_install() {
+  local name="$1"
+  [[ -z "$PKG_INSTALL_CMD" ]] && detect_pkg_manager
+  log_info "Installing $name via $PKG_MANAGER"
+  local IFS=' '
+  read -r -a installer <<<"$PKG_INSTALL_CMD"
+  "${installer[@]}" "$name"
+}
+
+install_package() {
+  local name="$1"
+  local installer_path="$INSTALLERS_DIR/${name}.sh"
+  local dry_run="${DRY_RUN:-false}"
+  if [[ -f "$installer_path" ]]; then
+    if [[ "$dry_run" == true ]]; then
+      log_info "Would run custom installer for $name (dry-run mode)"
+      return 0
+    fi
+    log_info "Running custom installer for $name"
+    # shellcheck disable=SC1090
+    source "$installer_path"
+    return 0
+  fi
+
+  if [[ "$dry_run" == true ]]; then
+    log_info "Would install $name via $PKG_MANAGER (dry-run mode)"
+    return 0
+  fi
+
+  pkg_install "$name"
+}
+
+install_packages() {
+  if [[ $# -eq 0 ]]; then
+    log_debug "No packages passed to install_packages"
+    return 0
+  fi
+
+  for pkg in "$@"; do
+    install_package "$pkg"
+  done
+}
