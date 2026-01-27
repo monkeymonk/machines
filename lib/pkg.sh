@@ -96,3 +96,34 @@ install_packages() {
     install_package "$pkg"
   done
 }
+
+install_package_with_mapping() {
+  local mapping="$1"
+  # Format: "default-name" or "default-name,arch:arch-name,debian:debian-name,macos:macos-name"
+
+  local package_name="$mapping"
+
+  # Check if mapping contains distro-specific names
+  if [[ "$mapping" == *","* ]]; then
+    # Has mappings, parse them
+    local IFS=','
+    read -r -a parts <<< "$mapping"
+    package_name="${parts[0]}"  # default name
+
+    # Look for distro-specific override
+    for part in "${parts[@]:1}"; do
+      if [[ "$part" == arch:* ]] && is_arch; then
+        package_name="${part#arch:}"
+        break
+      elif [[ "$part" == debian:* ]] && is_debian_like; then
+        package_name="${part#debian:}"
+        break
+      elif [[ "$part" == macos:* ]] && is_macos; then
+        package_name="${part#macos:}"
+        break
+      fi
+    done
+  fi
+
+  install_package "$package_name"
+}
