@@ -49,22 +49,21 @@ install_ollama() {
   else
     models=(
       qwen2.5-coder:7b
-      qwen2.5-coder:14b
-      qwen2.5-coder:32b
+      # qwen2.5-coder:32b
       deepseek-coder-v2:lite
-      starcoder2:15b
-      starcoder2:instruct
-      mistral-nemo:12b
+      # starcoder2:15b
+      # starcoder2:instruct
+      # mistral-nemo:12b
       llama3.1:8b
-      llama3.1:70b
-      gemma2:27b
-      phi3.5
-      granite-code:8b
-      granite-code:20b
-      granite-code:34b
-      nomic-embed-text
-      mxbai-embed-large
-      bge-m3
+      # llama3.1:70b
+      # gemma2:27b
+      # phi3.5
+      # granite-code:8b
+      # granite-code:20b
+      # granite-code:34b
+      # nomic-embed-text
+      # mxbai-embed-large
+      # bge-m3
     )
   fi
 
