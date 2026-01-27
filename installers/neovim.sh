@@ -1,52 +1,32 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Install neovim using bob-nvim (neovim version manager)
 install_neovim() {
   local dry_run="${DRY_RUN:-false}"
 
-  if command_exists nvim; then
-    log_info "Neovim already installed"
+  # Ensure bob is available
+  if ! command -v bob >/dev/null 2>&1; then
+    log_error "bob-nvim not found. Install cargo packages first."
+    return 1
+  fi
+
+  # Check if nvim is already installed via bob
+  if command -v nvim >/dev/null 2>&1; then
+    log_info "neovim already installed"
     return 0
   fi
 
-  log_info "Installing Neovim"
   if [[ "$dry_run" == true ]]; then
-    log_info "Would install Neovim (dry-run)"
+    log_info "Would install neovim stable via bob (dry-run)"
     return 0
   fi
 
-  if is_arch; then
-    pkg_install neovim
-  elif is_debian_like; then
-    install_neovim_from_source
-  elif is_macos; then
-    if command_exists brew; then
-      log_info "Installing Neovim via Homebrew"
-      brew install neovim
-    else
-      log_warn "Homebrew not found; falling back to package manager"
-      pkg_install neovim
-    fi
-  else
-    log_warn "No distro-specific Neovim installer for $DISTRO; using package manager"
-    pkg_install neovim
-  fi
-}
+  log_info "Installing neovim stable via bob"
+  bob install stable
+  bob use stable
 
-install_neovim_from_source() {
-  log_info "Installing Debian/Ubuntu build dependencies"
-  install_packages ninja-build libtool libtool-bin autoconf automake cmake g++ pkg-config unzip
-  local tmpdir
-  tmpdir=$(mktemp -d -t neovim-build-XXXXXX)
-  trap 'rm -rf "$tmpdir"' EXIT
-  log_info "Cloning Neovim sources into $tmpdir"
-  git clone https://github.com/neovim/neovim.git "$tmpdir/neovim"
-  pushd "$tmpdir/neovim" >/dev/null
-  make CMAKE_BUILD_TYPE=Release
-  sudo make install
-  popd >/dev/null
-  trap - EXIT
-  rm -rf "$tmpdir"
+  log_info "neovim installed successfully"
 }
 
 install_neovim
