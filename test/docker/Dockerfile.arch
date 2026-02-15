@@ -1,0 +1,4 @@
+FROM archlinux:latest
+RUN pacman -Syu --noconfirm && pacman -S --noconfirm systemd sudo git curl wget inetutils && pacman -Scc --noconfirm
+RUN useradd -m -s /bin/bash testuser && echo "testuser ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+WORKDIR /machines

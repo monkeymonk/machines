@@ -1,0 +1,5 @@
+# Ignore all test results
+*
+
+# But keep directory structure
+!.gitignore

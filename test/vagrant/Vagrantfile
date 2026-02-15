@@ -1,0 +1,40 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Multi-machine Vagrant setup for full integration testing
+# Defines Ubuntu 24.04, Debian 12 server, and Arch VMs
+
+Vagrant.configure("2") do |config|
+  # Ubuntu 24.04 - Desktop testing
+  config.vm.define "ubuntu24" do |ubuntu|
+    ubuntu.vm.box = "bento/ubuntu-24.04"
+    ubuntu.vm.provider :libvirt do |libvirt|
+      libvirt.memory = 4096
+      libvirt.cpus = 2
+      libvirt.graphics_type = "spice"
+    end
+    ubuntu.vm.provision :shell, path: "provision.sh", env: {"TEST_DISTRO"=>"ubuntu24", "TEST_ROLE"=>"workstation"}
+  end
+
+  # Debian 12 - Server testing
+  config.vm.define "debian12" do |debian|
+    debian.vm.box = "debian/bookworm64"
+    debian.vm.provider :libvirt do |libvirt|
+      libvirt.memory = 2048
+      libvirt.cpus = 2
+      libvirt.graphics_type = "none"
+    end
+    debian.vm.provision :shell, path: "provision.sh", env: {"TEST_DISTRO"=>"debian12", "TEST_ROLE"=>"server"}
+  end
+
+  # Arch - Desktop testing
+  config.vm.define "arch" do |arch|
+    arch.vm.box = "archlinux/archlinux"
+    arch.vm.provider :libvirt do |libvirt|
+      libvirt.memory = 4096
+      libvirt.cpus = 2
+      libvirt.graphics_type = "spice"
+    end
+    arch.vm.provision :shell, path: "provision.sh", env: {"TEST_DISTRO"=>"arch", "TEST_ROLE"=>"workstation"}
+  end
+end

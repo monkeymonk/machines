@@ -16,7 +16,14 @@ install_rustup() {
   fi
 
   curl -fsSL https://sh.rustup.rs | sh -s -- -y
-  log_info "Rust installed; add $HOME/.cargo/bin to PATH if needed"
+
+  # Source cargo env to make it available immediately
+  if [[ -f "$HOME/.cargo/env" ]]; then
+    # shellcheck disable=SC1091
+    source "$HOME/.cargo/env"
+  fi
+
+  log_info "Rust installed and cargo available in PATH"
 }
 
 install_rustup

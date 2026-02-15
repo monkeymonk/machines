@@ -7,8 +7,8 @@ install_neovim() {
 
   # Ensure bob is available
   if ! command -v bob >/dev/null 2>&1; then
-    log_error "bob-nvim not found. Install cargo packages first."
-    return 1
+    log_warn "bob-nvim not found, skipping neovim installation"
+    return 0
   fi
 
   # Check if nvim is already installed via bob

@@ -16,10 +16,17 @@ install_pyenv() {
       brew install python
     elif is_arch; then
       pkg_install python
+      pkg_install python-pip
     elif is_debian_like; then
       pkg_install python3
       pkg_install python3-venv
-      pkg_install python3-pip
+      # Force install python3-pip
+      sudo apt-get install -y python3-pip
+      # Verify pip works
+      if ! python3 -m pip --version &>/dev/null; then
+        log_warn "pip installation may have failed, attempting ensurepip"
+        python3 -m ensurepip --default-pip 2>/dev/null || true
+      fi
     else
       pkg_install python3
     fi
@@ -43,6 +50,11 @@ install_pyenv() {
     fi
     brew install pyenv
   else
+    # Verify pip is available before running pyenv installer
+    if ! python3 -m pip --version &>/dev/null; then
+      log_error "pip not available, cannot install pyenv"
+      return 1
+    fi
     curl -fsSL https://pyenv.run | bash
   fi
 

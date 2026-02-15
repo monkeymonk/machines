@@ -12,6 +12,32 @@ command_exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
+package_installed() {
+  local package_name="$1"
+
+  if [[ -z "$PKG_MANAGER" ]]; then
+    detect_pkg_manager
+  fi
+
+  case "$PKG_MANAGER" in
+    apt)
+      dpkg -l "$package_name" 2>/dev/null | grep -q "^ii"
+      return $?
+      ;;
+    pacman)
+      pacman -Q "$package_name" >/dev/null 2>&1
+      return $?
+      ;;
+    brew)
+      brew list "$package_name" >/dev/null 2>&1
+      return $?
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 ensure_command() {
   local command_name="$1"
   local package_name="$2"
@@ -29,7 +55,7 @@ detect_pkg_manager() {
     PKG_UPDATE_CMD="sudo apt-get update"
   elif command -v pacman >/dev/null 2>&1; then
     PKG_MANAGER="pacman"
-    PKG_INSTALL_CMD="sudo pacman -S --needed"
+    PKG_INSTALL_CMD="sudo pacman -S --needed --noconfirm"
     PKG_UPDATE_CMD="sudo pacman -Sy"
   elif command -v brew >/dev/null 2>&1; then
     PKG_MANAGER="brew"
@@ -57,6 +83,13 @@ pkg_update() {
 pkg_install() {
   local name="$1"
   [[ -z "$PKG_INSTALL_CMD" ]] && detect_pkg_manager
+
+  # Check if already installed
+  if package_installed "$name"; then
+    log_info "$name already installed"
+    return 0
+  fi
+
   log_info "Installing $name via $PKG_MANAGER"
   local IFS=' '
   read -r -a installer <<<"$PKG_INSTALL_CMD"
