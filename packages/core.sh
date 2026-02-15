@@ -26,6 +26,7 @@ CORE_PACKAGES=(
   # Media tools
   ffmpeg
   imagemagick
+  poppler-utils
 
   # CLI tools
   bash-completion
@@ -47,7 +48,7 @@ CARGO_PACKAGES=(
   exa          # Modern ls alternative
   bob-nvim     # Neovim version manager
   zoxide       # Smarter cd command
-  yazi-fm      # Terminal file manager
+  # yazi-fm moved to custom installer (uses binary release)
 )
 
 install_cargo_packages() {
@@ -114,6 +115,9 @@ install_core_packages() {
 
   # Install cargo packages (requires rustup)
   install_cargo_packages
+
+  # Install yazi (uses binary release, not cargo)
+  install_package yazi
 
   # Install version managers
   install_package nvm
