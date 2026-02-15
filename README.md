@@ -88,8 +88,12 @@ machines/
 │   ├── core.sh
 │   ├── dev.sh
 │   ├── shell.sh
+│   ├── security.sh
+│   ├── server-tools.sh
+│   ├── homelab.sh
 │   ├── lazyvim.sh
 │   ├── terminals.sh
+│   ├── hyprland.sh
 │   └── ai.sh
 ├── installers/         # special-case installers
 │   ├── neovim.sh
@@ -99,6 +103,7 @@ machines/
 └── roles/              # optional presets
     ├── workstation.sh
     ├── server.sh
+    ├── homelab.sh
     └── gaming.sh
 ```
 
@@ -123,11 +128,13 @@ cd ~/machines
 Run the installer:
 
 ```bash
-./install.sh --role workstation
+./install.sh --role workstation  # Full dev environment
+./install.sh --role server        # Minimal server (security-focused, no zsh)
+./install.sh --role homelab       # Server + networking/secrets tools
+./install.sh --role gaming        # Gaming-focused setup
 ```
 
-Use `--role server` or `--role gaming` to select other presets. Use
-`--dry-run` to preview actions without installing.
+Use `--dry-run` to preview actions without installing.
 
 Install extra packages on demand:
 
@@ -189,6 +196,20 @@ make test-shell-ubuntu24   # SSH into Ubuntu VM for interactive debugging
 ```
 
 See [TESTING.md](TESTING.md) for detailed usage, troubleshooting, and prerequisites.
+
+---
+
+## Roles
+
+This repository provides four predefined roles:
+
+- **workstation** - Full dev environment (core + dev + shell + desktop apps)
+- **server** - Minimal security-focused server (core + security + server-tools, no zsh)
+  - Includes: fail2ban, ufw, openssh-server, auditd, logwatch
+  - Tools: ncdu, rsync, docker, neovim
+- **homelab** - Extends server with networking and secrets management
+  - Additional packages: net-tools, iproute2, sops
+- **gaming** - Gaming-focused workstation (core + desktop + Steam, nvidia drivers)
 
 ---
 
