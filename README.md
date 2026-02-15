@@ -153,6 +153,45 @@ Once this finishes, the system should be ready for:
 
 ---
 
+## Testing
+
+This repository includes automated testing infrastructure for validating bootstrap
+scripts across multiple distributions.
+
+### Quick validation (2-5 minutes)
+
+```bash
+make test-quick
+```
+
+Runs fast Docker-based tests for all distros (Ubuntu 24.04, Debian 12, Arch).
+
+### Full integration testing (30-45 minutes)
+
+```bash
+make test-full
+```
+
+Runs complete VM-based tests with full role installations and service verification.
+
+### Test specific distro
+
+```bash
+make test-ubuntu24     # Quick + Full for Ubuntu 24.04
+make test-debian12     # Quick + Full for Debian 12
+make test-arch         # Quick + Full for Arch
+```
+
+### Debugging
+
+```bash
+make test-shell-ubuntu24   # SSH into Ubuntu VM for interactive debugging
+```
+
+See [TESTING.md](TESTING.md) for detailed usage, troubleshooting, and prerequisites.
+
+---
+
 ## Philosophy
 
 - **Declarative over clever** – scripts should read like documentation

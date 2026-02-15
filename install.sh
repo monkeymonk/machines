@@ -23,14 +23,18 @@ source_if_exists "$SCRIPT_DIR/packages/dev.sh"
 source_if_exists "$SCRIPT_DIR/packages/lazyvim.sh"
 source_if_exists "$SCRIPT_DIR/packages/terminals.sh"
 source_if_exists "$SCRIPT_DIR/packages/shell.sh"
+source_if_exists "$SCRIPT_DIR/packages/security.sh"
+source_if_exists "$SCRIPT_DIR/packages/server-tools.sh"
+source_if_exists "$SCRIPT_DIR/packages/homelab.sh"
 source_if_exists "$SCRIPT_DIR/roles/workstation.sh"
 source_if_exists "$SCRIPT_DIR/roles/server.sh"
 source_if_exists "$SCRIPT_DIR/roles/gaming.sh"
+source_if_exists "$SCRIPT_DIR/roles/homelab.sh"
 source_if_exists "$SCRIPT_DIR/bootstrap/arch.sh"
 source_if_exists "$SCRIPT_DIR/bootstrap/ubuntu.sh"
 source_if_exists "$SCRIPT_DIR/bootstrap/macos.sh"
 
-AVAILABLE_ROLES=(server workstation gaming)
+AVAILABLE_ROLES=(server workstation gaming homelab)
 ROLE="server"
 DRY_RUN=false
 EXTRA_PACKAGES=""
@@ -50,6 +54,7 @@ Available roles:
   server               Minimal setup: core packages, shell, dev tools
   workstation          Full development: server + desktop apps, editors, AI tools
   gaming               Gaming-focused: core + desktop apps, Steam, nvidia drivers
+  homelab              Server hardening + Docker + monitoring tools
 EOF
 }
 
@@ -126,6 +131,9 @@ run_role() {
     ;;
   gaming)
     gaming_role
+    ;;
+  homelab)
+    homelab_role
     ;;
   *)
     log_error "Unknown role: $ROLE"

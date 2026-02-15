@@ -17,7 +17,7 @@ CORE_PACKAGES=(
   # Archive tools
   unzip
   tar
-  xz-utils
+  "xz-utils,arch:xz"
   "7zip,arch:p7zip,debian:p7zip-full"
 
   # File utilities
@@ -52,6 +52,12 @@ CARGO_PACKAGES=(
 
 install_cargo_packages() {
   local dry_run="${DRY_RUN:-false}"
+
+  # Allow skipping cargo packages (useful for quick tests)
+  if [[ "${SKIP_CARGO_PACKAGES:-false}" == true ]]; then
+    log_info "Skipping cargo packages (SKIP_CARGO_PACKAGES=true)"
+    return 0
+  fi
 
   # Ensure cargo is available
   if ! command -v cargo >/dev/null 2>&1; then
