@@ -95,11 +95,20 @@ install_cargo_packages() {
 }
 
 install_core_packages() {
-  # Install rustup first (needed for cargo packages)
+  # Install essential prerequisites first (needed by other installers)
+  install_package git
+  install_package curl
+  install_package wget
+
+  # Install rustup (needed for cargo packages)
   install_package rustup
 
-  # Install system packages with distro-aware mapping
+  # Install remaining system packages with distro-aware mapping
   for pkg in "${CORE_PACKAGES[@]}"; do
+    # Skip already installed prerequisites
+    if [[ "$pkg" == "git" || "$pkg" == "curl" || "$pkg" == "wget" ]]; then
+      continue
+    fi
     install_package_with_mapping "$pkg"
   done
 
