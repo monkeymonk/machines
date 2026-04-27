@@ -24,14 +24,15 @@ I use a **bare Git repository** for my dotfiles, which works great once a system
 
 Goals:
 
-- Work across **multiple distributions** (Arch, Ubuntu, etc.)
+- Work across **multiple distributions** (Arch, CachyOS, Manjaro, EndeavourOS,
+  Debian, Ubuntu, macOS)
 - Be **idempotent** (safe to re-run)
 - Be **readable and boring**, not clever
 - Keep distro-specific logic isolated
 - Stay small enough to understand months later
 
 This is not a full distro installer or a replacement for tools like Nix or
-Ansible — it’s a **personal, pragmatic bootstrap kit**.
+Ansible — it's a **personal, pragmatic bootstrap kit**.
 
 ---
 
@@ -42,7 +43,8 @@ Ansible — it’s a **personal, pragmatic bootstrap kit**.
 - Detecting the current distribution (Linux/macOS)
 - Installing core system packages
 - Installing optional groups (dev tools, desktop apps, server tools…)
-- Handling special installers that don’t fit normal package managers
+- Handling special installers that don't fit normal package managers (AUR, .deb
+  from upstream, build-from-source, etc.)
 - Preparing the system so my bare dotfiles repo can be used immediately
 
 It does **not**:
@@ -60,7 +62,7 @@ It does **not**:
 The repo lives at:
 
 ```bash
-~/machines
+~/.config/machines
 ```
 
 This keeps it clearly separated from my bare dotfiles repo (which typically
@@ -70,41 +72,45 @@ lives at `$HOME` with a different Git setup).
 
 ### Structure
 
-High-level layout:
-
 ```text
 machines/
-├── install.sh          # main entry point
-├── test.sh             # lint + syntax + dry-run checks
-├── bootstrap/          # distro-specific system prep
-│   ├── arch.sh
-│   ├── ubuntu.sh
+├── install.sh            # main entry point
+├── test.sh               # lint + syntax + dry-run checks
+├── Makefile              # convenience targets for the test suite
+├── bootstrap/            # distro-specific system prep
+│   ├── arch.sh           #   covers arch / cachyos / manjaro / endeavouros
+│   ├── ubuntu.sh         #   covers ubuntu / debian
 │   └── macos.sh
-├── lib/                # shared helpers
-│   ├── os.sh           # OS / distro detection
-│   ├── pkg.sh          # package manager abstraction
-│   └── log.sh          # logging helpers
-├── packages/           # logical package groups
-│   ├── core.sh
-│   ├── dev.sh
-│   ├── shell.sh
-│   ├── security.sh
-│   ├── server-tools.sh
-│   ├── homelab.sh
-│   ├── lazyvim.sh
-│   ├── terminals.sh
-│   ├── hyprland.sh
-│   └── ai.sh
-├── installers/         # special-case installers
-│   ├── neovim.sh
-│   └── <tool>.sh
-├── hosts/              # host-specific overrides
-│   └── <hostname>.sh
-└── roles/              # optional presets
-    ├── workstation.sh
-    ├── server.sh
-    ├── homelab.sh
-    └── gaming.sh
+├── lib/                  # shared helpers
+│   ├── log.sh            #   logging
+│   ├── os.sh             #   distro detection + capability gates
+│   ├── pkg.sh            #   package-manager abstraction + AUR + apt repo
+│   └── sysd.sh           #   systemd / sudoers / privileged-file helpers
+├── packages/             # logical package groups
+│   ├── core.sh           #   git, curl, build tools, archive tools, …
+│   ├── cli.sh            #   fzf, ripgrep, fd, bat, eza, jq, mise, uv, …
+│   ├── dev.sh            #   slot for extra dev-only packages
+│   ├── shell.sh          #   zsh + oh-my-zsh
+│   ├── ai.sh             #   ollama + llama-cpp + llama-swap
+│   ├── desktop-apps.sh   #   firefox, filezilla, mpv (gui-capable hosts)
+│   ├── wayland.sh        #   cliphist, wl-clipboard, grim, slurp
+│   ├── nautilus.sh       #   nautilus + plugins
+│   ├── security.sh       #   fail2ban, ufw, openssh, auditd, logwatch
+│   ├── server-tools.sh   #   ncdu, rsync
+│   └── homelab.sh        #   net-tools, iproute2, sops
+├── installers/           # special-case installers (one per tool)
+│   └── <tool>.sh         #   AUR-only, third-party apt repo, source build, etc.
+├── hosts/                # host-specific overrides
+│   └── <hostname>.sh     #   auto-loaded by hostname; sets ROLE + host_extras
+├── roles/                # role presets
+│   ├── server.sh
+│   ├── workstation.sh
+│   ├── gaming.sh
+│   └── homelab.sh
+└── test/                 # docker + vagrant test infrastructure
+    ├── docker/
+    ├── vagrant/
+    └── lib/
 ```
 
 Design rules:
@@ -121,17 +127,17 @@ Design rules:
 Clone the repository:
 
 ```bash
-git clone <repo-url> ~/machines
-cd ~/machines
+git clone <repo-url> ~/.config/machines
+cd ~/.config/machines
 ```
 
 Run the installer:
 
 ```bash
-./install.sh --role workstation  # Full dev environment
-./install.sh --role server        # Minimal server (security-focused, no zsh)
-./install.sh --role homelab       # Server + networking/secrets tools
-./install.sh --role gaming        # Gaming-focused setup
+./install.sh --role server         # Lean security-focused server
+./install.sh --role workstation    # Full dev environment + AI stack
+./install.sh --role homelab        # Server + sops + networking tools
+./install.sh --role gaming         # Steam + nvidia drivers + desktop apps
 ```
 
 Use `--dry-run` to preview actions without installing.
@@ -142,17 +148,13 @@ Install extra packages on demand:
 ./install.sh --packages "htop, jq, bat"
 ```
 
-Add host-specific overrides by creating `hosts/<hostname>.sh`. These scripts
-run after the role completes and can call any helper (install_package, log_info,
-etc.).
+Add host-specific overrides by creating `hosts/<hostname>.sh`. The file is
+auto-loaded based on the current hostname. It can set `ROLE` and define a
+`host_extras()` function that runs after the role completes. Gate
+role-specific extras on `$ROLE` so a `--role server` install on a workstation
+host doesn't pull in desktop packages — see `hosts/example.sh`.
 
-Run the test suite:
-
-```bash
-./test.sh
-```
-
-Once this finishes, the system should be ready for:
+Once `install.sh` finishes, the system is ready for:
 
 - cloning / enabling the bare dotfiles repository
 - applying secretfiles from a separate bare repository
@@ -160,56 +162,105 @@ Once this finishes, the system should be ready for:
 
 ---
 
-## Testing
+## Roles
 
-This repository includes automated testing infrastructure for validating bootstrap
-scripts across multiple distributions.
+| Role | Includes | Notes |
+|---|---|---|
+| `server` | core + security + server-tools + docker + neovim | fail2ban, ufw, openssh, auditd, logwatch |
+| `workstation` | core + shell + cli + ai-stack + desktop-apps + wayland + nautilus + neovim + tmux + opencode + docker | Desktop environment lives in `host_extras` (e.g. niri-stack) |
+| `homelab` | server + net-tools + iproute2 + sops | Server hardening with secrets/network tools |
+| `gaming` | core + shell + dev + gaming-desktop-apps + steam + nvidia driver | Auto-detects NVIDIA hardware |
 
-### Quick validation (2-5 minutes)
-
-```bash
-make test-quick
-```
-
-Runs fast Docker-based tests for all distros (Ubuntu 24.04, Debian 12, Arch).
-
-### Full integration testing (30-45 minutes)
-
-```bash
-make test-full
-```
-
-Runs complete VM-based tests with full role installations and service verification.
-
-### Test specific distro
-
-```bash
-make test-ubuntu24     # Quick + Full for Ubuntu 24.04
-make test-debian12     # Quick + Full for Debian 12
-make test-arch         # Quick + Full for Arch
-```
-
-### Debugging
-
-```bash
-make test-shell-ubuntu24   # SSH into Ubuntu VM for interactive debugging
-```
-
-See [TESTING.md](TESTING.md) for detailed usage, troubleshooting, and prerequisites.
+`install_core_packages` runs once at the top of `main()`, before the role —
+roles compose by calling sub-installers, not by re-running core.
 
 ---
 
-## Roles
+## Cross-distro behaviour
 
-This repository provides four predefined roles:
+Packages are resolved through `install_package_with_mapping` in `lib/pkg.sh`,
+which accepts entries like:
 
-- **workstation** - Full dev environment (core + dev + shell + desktop apps)
-- **server** - Minimal security-focused server (core + security + server-tools, no zsh)
-  - Includes: fail2ban, ufw, openssh-server, auditd, logwatch
-  - Tools: ncdu, rsync, docker, neovim
-- **homelab** - Extends server with networking and secrets management
-  - Additional packages: net-tools, iproute2, sops
-- **gaming** - Gaming-focused workstation (core + desktop + Steam, nvidia drivers)
+```bash
+"build-essential,arch:base-devel"
+"7zip,arch:p7zip,debian:p7zip-full"
+"poppler-utils,arch:poppler"
+```
+
+Resolution per distro family:
+
+- **Arch family** (arch / cachyos / manjaro / endeavouros) — `arch:` override
+  uses pacman; `aur:` override uses paru. With no override, the auto path
+  tries pacman first and falls back to AUR. Paru is bootstrapped from
+  `paru-bin`; if that fails its smoke test (e.g. libalpm soname mismatch),
+  it's rebuilt from source.
+- **Debian/Ubuntu** — `ubuntu:` override beats `debian:` on Ubuntu;
+  `debian:` is the fallback for both. Always apt.
+- **macOS** — `macos-cask:` uses brew --cask; `macos:` uses brew. Always brew.
+
+Capability gates (also in `lib/os.sh`) skip GUI/Wayland installers on headless
+hosts and containers automatically.
+
+---
+
+## Testing
+
+Two layers, both invoked through the `Makefile`:
+
+- **`test.sh` — lint** (always fast, runs locally): bash syntax check on every
+  script, source-import check for the lib/packages stack, and a `--dry-run`
+  for the default role. Required to pass before any container/VM test.
+- **Docker quick tests** (~2-5 min/distro): build a minimal image, run
+  `./test.sh`, then `./install.sh --role X --dry-run`, then run the install
+  twice (second pass exercises idempotency), then assert `git zsh cargo
+  ollama` are on PATH. Three matrices: Ubuntu 24.04 / Debian 12 / Arch.
+- **Vagrant full tests** (~10-20 min/distro, optional): run the full install
+  in a real VM with systemd, including service enablement and the second-run
+  idempotency check. Needs Vagrant + libvirt.
+
+### Running locally
+
+```bash
+./test.sh                  # lint + dry-run only
+
+make test-quick            # docker quick tests for all 3 distros
+make test-quick-ubuntu24   # one distro
+make test-quick-debian12
+make test-quick-arch
+
+make test-full             # vagrant full tests for all 3 distros
+make test-shell-ubuntu24   # interactive SSH into a vagrant VM for debugging
+
+make test-clean            # remove built images, vagrant boxes, and results
+```
+
+### Test environment knobs
+
+- `OLLAMA_SKIP_MODELS=true` — skip the interactive model-pull menu in
+  `installers/ollama.sh`. Always set inside the test runner.
+- `SKIP_CARGO_PACKAGES=true` — skip `cargo install` in `packages/core.sh`
+  (those crates compile slowly and are non-critical for verification). Always
+  set inside the test runner.
+- `DRY_RUN=true` — set automatically by `--dry-run`.
+
+### Prerequisites
+
+```bash
+# Docker (quick tests)
+sudo pacman -S docker docker-buildx       # arch
+sudo apt install docker.io docker-buildx  # debian/ubuntu
+sudo usermod -aG docker $USER && newgrp docker
+
+# Vagrant + libvirt (full tests)
+sudo pacman -S vagrant qemu libvirt       # arch
+sudo apt install vagrant qemu-kvm libvirt-daemon-system libvirt-clients  # debian/ubuntu
+vagrant plugin install vagrant-libvirt
+sudo usermod -aG libvirt $USER && newgrp libvirt
+```
+
+The Docker test runner exports `DOCKER_BUILDKIT=0` so it works on hosts where
+the buildx component isn't installed. Detailed troubleshooting and the full
+distro/role matrix live in [TESTING.md](TESTING.md).
 
 ---
 
@@ -220,7 +271,7 @@ This repository provides four predefined roles:
 - **Explicit over implicit** – nothing happens silently
 - **Personal, not universal** – this is for _my_ systems
 
-If something feels like it belongs in dotfiles, it probably doesn’t belong here.
+If something feels like it belongs in dotfiles, it probably doesn't belong here.
 If something is needed before dotfiles can even run, it probably belongs here.
 
 ---
@@ -232,22 +283,14 @@ addition small and explicit.
 
 When adding a new tool:
 
-1. Create a new installer in `installers/<tool>.sh` if the package manager
-   isn’t enough or you need special logic.
-2. Wire it into a role or package group using `install_package <tool>`.
-3. Prefer updating the role directly when it only applies to a single role.
+1. Try a clean cross-distro mapping in a `packages/*.sh` group first.
+2. If a tool needs apt-repo-add, build-from-source, AUR-only, or other
+   special handling, write `installers/<tool>.sh` and call it via
+   `install_package <tool>`.
+3. Wire it into a role or package group.
 4. Keep distro logic in helpers or the installer, not in the roles.
 
 This keeps the scripts boring, repeatable, and easy to evolve over time.
-
----
-
-## Future ideas (maybe)
-
-- Minimal TUI / menu wrapper
-- Expand test coverage in disposable containers
-
-No rush. The goal is longevity, not features.
 
 ---
 

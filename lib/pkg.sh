@@ -301,6 +301,15 @@ aur_bootstrap_paru() {
   fi
 
   log_warn "paru-bin smoke test failed (libalpm soname mismatch?); building paru from source"
+  # Remove the broken paru-bin (and its debug split package) first so the
+  # source build's pacman -U doesn't hit a "conflicting packages" prompt or
+  # "conflicting files" error under --noconfirm.
+  local pkg
+  for pkg in paru-bin-debug paru-bin; do
+    if pacman -Q "$pkg" >/dev/null 2>&1; then
+      sudo pacman -Rdd --noconfirm "$pkg" || true
+    fi
+  done
   # Rust is needed to build paru from source.
   command_exists cargo || install_package rustup
   if [[ -f "$HOME/.cargo/env" ]]; then

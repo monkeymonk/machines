@@ -23,16 +23,22 @@ install_llama_cpp() {
     fi
     brew install llama.cpp
   elif is_debian_like; then
+    # llama.cpp's Vulkan backend needs glslc + spirv-tools + shaderc on top of
+    # the Vulkan loader/headers from libvulkan-dev.
     sudo apt-get install -y \
       cmake build-essential git \
-      glslang-tools libvulkan-dev
+      glslang-tools libvulkan-dev \
+      glslc spirv-tools libshaderc-dev || \
+      log_warn "some llama.cpp build deps were not available; cmake configure may fail"
     local src
     src=$(mktemp -d)
     git clone --depth=1 https://github.com/ggerganov/llama.cpp "$src/llama.cpp"
-    (cd "$src/llama.cpp" &&
-      cmake -B build -DGGML_VULKAN=ON &&
-      cmake --build build -j"$(nproc)" &&
-      sudo cmake --install build --prefix /usr/local)
+    if ! (cd "$src/llama.cpp" &&
+        cmake -B build -DGGML_VULKAN=ON &&
+        cmake --build build -j"$(nproc)" &&
+        sudo cmake --install build --prefix /usr/local); then
+      log_warn "llama.cpp build failed; install manually if needed"
+    fi
     rm -rf "$src"
   else
     log_error "no llama.cpp install path for $DISTRO"

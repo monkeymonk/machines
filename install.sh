@@ -114,10 +114,11 @@ parse_args() {
 
 run_bootstrap_hook() {
   case "$DISTRO" in
-  arch)
+  arch | cachyos | manjaro | endeavouros)
     bootstrap_arch
     ;;
-  ubuntu)
+  ubuntu | debian)
+    # Debian and Ubuntu share the apt-get update bootstrap.
     bootstrap_ubuntu
     ;;
   macos)

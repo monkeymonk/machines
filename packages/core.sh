@@ -26,7 +26,7 @@ CORE_PACKAGES=(
   # Media tools
   ffmpeg
   imagemagick
-  poppler-utils
+  "poppler-utils,arch:poppler"
 
   # CLI tools
   bash-completion

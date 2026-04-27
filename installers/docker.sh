@@ -19,7 +19,16 @@ install_docker() {
         brew install --cask docker
       elif is_debian_like; then
         pkg_install docker.io
-        pkg_install docker-compose-plugin
+        # Debian default repos ship docker-compose v1 (Python). Ubuntu noble
+        # has docker-compose-v2 in universe. Try v2 first, fall back to v1,
+        # warn if neither is available.
+        if apt-cache show docker-compose-v2 >/dev/null 2>&1; then
+          pkg_install docker-compose-v2
+        elif apt-cache show docker-compose >/dev/null 2>&1; then
+          pkg_install docker-compose
+        else
+          log_warn "no docker-compose package found in apt; install Docker official repo for docker-compose-plugin"
+        fi
       elif is_arch; then
         pkg_install docker
         pkg_install docker-compose
