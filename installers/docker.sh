@@ -36,9 +36,11 @@ install_docker() {
   fi
 
   if command_exists systemctl; then
-    if ! systemctl is-active --quiet docker; then
-      sudo systemctl enable --now docker
-    fi
+    enable_system_unit docker.service
+  fi
+
+  if command_exists docker; then
+    add_user_to_group docker
   fi
 }
 

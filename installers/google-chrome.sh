@@ -30,13 +30,7 @@ install_google_chrome() {
     sudo dpkg -i "$tmp_deb" || sudo apt-get -f install -y
     rm -f "$tmp_deb"
   elif is_arch; then
-    if command_exists yay; then
-      yay -S --needed google-chrome
-    elif command_exists paru; then
-      paru -S --needed google-chrome
-    else
-      log_warn "No AUR helper found; install Google Chrome manually"
-    fi
+    aur_install google-chrome
   else
     pkg_install google-chrome
   fi

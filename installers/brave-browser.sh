@@ -35,13 +35,7 @@ install_brave_browser() {
     pkg_update
     pkg_install brave-browser
   elif is_arch; then
-    if command_exists yay; then
-      yay -S --needed brave-browser
-    elif command_exists paru; then
-      paru -S --needed brave-browser
-    else
-      log_warn "No AUR helper found; install Brave Browser manually"
-    fi
+    aur_install brave-browser
   else
     pkg_install brave-browser
   fi

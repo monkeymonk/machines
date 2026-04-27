@@ -11,6 +11,17 @@ install_junction() {
   local dry_run="${DRY_RUN:-false}"
   local flatpak_id="re.sonny.Junction"
 
+  if ! is_gui_capable; then
+    log_info "skipping junction (not a GUI host)"
+    return 0
+  fi
+
+  # On Arch, junction is in repos directly — prefer that over flatpak.
+  if is_arch && pacman -Si junction >/dev/null 2>&1; then
+    pkg_install junction
+    return 0
+  fi
+
   # Check if already installed via Flatpak
   if command -v flatpak >/dev/null 2>&1; then
     if flatpak list --app | grep -q "$flatpak_id"; then

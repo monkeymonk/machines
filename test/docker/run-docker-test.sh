@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Use the legacy builder so this works on hosts without docker-buildx.
+export DOCKER_BUILDKIT=0
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/test-common.sh"
 
@@ -46,7 +49,8 @@ run_tests() {
     role=$(get_test_role "$distro")
 
     log_test_info "Running tests in container with role: $role"
-    docker run --rm -v "$(pwd)/../..:/machines" "machines-test:$distro" bash -c "su - testuser -c 'cd /machines && export OLLAMA_SKIP_MODELS=true SKIP_CARGO_PACKAGES=true && ./test.sh && ./install.sh --role $role --dry-run && ./install.sh --role $role && command -v git zsh cargo ollama'" || return $?
+    # Run install twice — second pass exercises idempotency.
+    docker run --rm -v "$(pwd)/../..:/machines" "machines-test:$distro" bash -c "su - testuser -c 'cd /machines && export OLLAMA_SKIP_MODELS=true SKIP_CARGO_PACKAGES=true && ./test.sh && ./install.sh --role $role --dry-run && ./install.sh --role $role && ./install.sh --role $role && command -v git zsh cargo ollama'" || return $?
 }
 
 cleanup() {

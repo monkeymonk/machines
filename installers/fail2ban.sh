@@ -30,14 +30,7 @@ install_fail2ban() {
     return 1
   fi
 
-  # Enable and start service
-  if command_exists systemctl; then
-    if ! systemctl is-active --quiet fail2ban 2>/dev/null; then
-      log_info "Enabling and starting fail2ban service"
-      sudo systemctl enable fail2ban
-      sudo systemctl start fail2ban
-    fi
-  fi
+  enable_system_unit fail2ban
 }
 
 install_fail2ban

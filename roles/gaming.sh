@@ -15,8 +15,8 @@ install_gaming_desktop_apps() {
   install_packages "${GAMING_DESKTOP_APPS[@]}"
 }
 
+# install_core_packages is run by main() before the role.
 gaming_role() {
-  install_core_packages
   install_shell_stack
   install_dev_packages
   install_gaming_desktop_apps

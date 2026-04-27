@@ -4,6 +4,11 @@ set -euo pipefail
 install_discord() {
   local dry_run="${DRY_RUN:-false}"
 
+  if ! is_gui_capable; then
+    log_info "skipping discord (not a GUI host)"
+    return 0
+  fi
+
   if command_exists discord; then
     log_info "Discord already installed"
     return 0

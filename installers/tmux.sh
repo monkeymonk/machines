@@ -27,6 +27,22 @@ install_tmux() {
     fi
   }
 
+  pip_user_install() {
+    local pkg="$1"
+    local pip_cmd
+    if command_exists pip3; then
+      pip_cmd=pip3
+    elif command_exists pip; then
+      pip_cmd=pip
+    else
+      log_error "pip not available; cannot install $pkg"
+      return 1
+    fi
+    if ! "$pip_cmd" install --user "$pkg" 2>/dev/null; then
+      "$pip_cmd" install --user --break-system-packages "$pkg"
+    fi
+  }
+
   if command_exists tmux; then
     log_info "tmux already installed"
   else
@@ -52,14 +68,7 @@ install_tmux() {
       log_info "Would install tmuxp via pip (dry-run)"
     else
       ensure_pip
-      if command_exists pip3; then
-        pip3 install --user tmuxp
-      elif command_exists pip; then
-        pip install --user tmuxp
-      else
-        log_error "pip not available; cannot install tmuxp"
-        return 1
-      fi
+      pip_user_install tmuxp
     fi
   fi
 
@@ -71,37 +80,6 @@ install_tmux() {
   else
     git clone https://github.com/tmux-plugins/tpm "$tpm_dir"
   fi
-
-  local tmux_conf="$HOME/.tmux.conf"
-  local marker="# >>> machines tmux plugins"
-  if [[ -f "$tmux_conf" ]] && grep -q "$marker" "$tmux_conf"; then
-    log_info "tmux plugin block already configured"
-    return 0
-  fi
-
-  if [[ "$dry_run" == true ]]; then
-    log_info "Would add tmux plugin block to $tmux_conf (dry-run)"
-    return 0
-  fi
-
-  if [[ -f "$tmux_conf" ]]; then
-    log_info "Appending tmux plugin block to $tmux_conf"
-  else
-    log_info "Creating $tmux_conf with tmux plugin block"
-  fi
-
-  cat >>"$tmux_conf" <<'EOF'
-
-# >>> machines tmux plugins
-set -g @plugin 'tmux-plugins/tpm'
-set -g @plugin 'christoomey/vim-tmux-navigator'
-set -g @plugin 'tmux-plugins/tmux-continuum'
-set -g @plugin 'tmux-plugins/tmux-resurrect'
-set -g @plugin 'tmux-plugins/tmux-sensible'
-set -g @plugin 'tmux-plugins/tmux-yank'
-run '~/.tmux/plugins/tpm/tpm'
-# <<< machines tmux plugins
-EOF
 }
 
 install_tmux

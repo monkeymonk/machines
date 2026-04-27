@@ -17,11 +17,14 @@ source_if_exists() {
 source_if_exists "$SCRIPT_DIR/lib/log.sh"
 source_if_exists "$SCRIPT_DIR/lib/os.sh"
 source_if_exists "$SCRIPT_DIR/lib/pkg.sh"
+source_if_exists "$SCRIPT_DIR/lib/sysd.sh"
 source_if_exists "$SCRIPT_DIR/packages/core.sh"
 source_if_exists "$SCRIPT_DIR/packages/ai.sh"
 source_if_exists "$SCRIPT_DIR/packages/dev.sh"
-source_if_exists "$SCRIPT_DIR/packages/lazyvim.sh"
-source_if_exists "$SCRIPT_DIR/packages/terminals.sh"
+source_if_exists "$SCRIPT_DIR/packages/cli.sh"
+source_if_exists "$SCRIPT_DIR/packages/desktop-apps.sh"
+source_if_exists "$SCRIPT_DIR/packages/wayland.sh"
+source_if_exists "$SCRIPT_DIR/packages/nautilus.sh"
 source_if_exists "$SCRIPT_DIR/packages/shell.sh"
 source_if_exists "$SCRIPT_DIR/packages/security.sh"
 source_if_exists "$SCRIPT_DIR/packages/server-tools.sh"
@@ -34,11 +37,16 @@ source_if_exists "$SCRIPT_DIR/bootstrap/arch.sh"
 source_if_exists "$SCRIPT_DIR/bootstrap/ubuntu.sh"
 source_if_exists "$SCRIPT_DIR/bootstrap/macos.sh"
 
+# Host file auto-loaded by hostname. May set ROLE (default below if unset) and
+# define host_extras() to run after the role completes.
+HOSTS_DIR="$SCRIPT_DIR/hosts"
+HOST_FILE="$HOSTS_DIR/$(hostname).sh"
+source_if_exists "$HOST_FILE"
+
 AVAILABLE_ROLES=(server workstation gaming homelab)
-ROLE="server"
+ROLE="${ROLE:-server}"
 DRY_RUN=false
 EXTRA_PACKAGES=""
-HOSTS_DIR="$SCRIPT_DIR/hosts"
 
 usage() {
   cat <<EOF
@@ -159,21 +167,12 @@ install_extra_packages() {
   done
 }
 
-run_host_overrides() {
-  local hostname
-  hostname=$(hostname)
-  local host_file="$HOSTS_DIR/${hostname}.sh"
-
-  if [[ -f "$host_file" ]]; then
-    if [[ "$DRY_RUN" == true ]]; then
-      log_info "Would run host-specific overrides for $hostname (dry-run)"
-    else
-      log_info "Running host-specific overrides for $hostname"
-      # shellcheck disable=SC1090
-      source "$host_file"
-    fi
+run_host_extras() {
+  if declare -F host_extras >/dev/null 2>&1; then
+    log_info "running host_extras for $(hostname)"
+    host_extras
   else
-    log_debug "No host-specific overrides found for $hostname"
+    log_debug "no host_extras defined for $(hostname)"
   fi
 }
 
@@ -186,7 +185,7 @@ main() {
   install_core_packages
   run_role
   install_extra_packages
-  run_host_overrides
+  run_host_extras
   if [[ "$DRY_RUN" == true ]]; then
     log_info "Dry-run mode enabled; no packages were changed"
   else

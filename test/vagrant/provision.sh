@@ -46,8 +46,13 @@ run_installation() {
 verify_installation() {
     log "Verifying installation"
 
-    local missing=0
+    # rustup installs cargo into ~/.cargo/bin which is only on PATH after env is sourced.
+    if [[ -f "$HOME/.cargo/env" ]]; then
+        # shellcheck disable=SC1091
+        source "$HOME/.cargo/env"
+    fi
 
+    local missing=0
     for cmd in git zsh bat cargo; do
         if ! command -v "$cmd" &>/dev/null; then
             log "ERROR: $cmd not found"
@@ -56,15 +61,6 @@ verify_installation() {
             log "✓ $cmd found"
         fi
     done
-
-    # Workstation-specific checks
-    if [[ "$TEST_ROLE" == "workstation" ]]; then
-        if [[ -f /usr/share/wayland-sessions/hyprland.desktop ]]; then
-            log "✓ Hyprland session file found"
-        else
-            log "WARNING: Hyprland session file not found (may not be installed)"
-        fi
-    fi
 
     if [[ $missing -gt 0 ]]; then
         log "ERROR: $missing required commands missing"

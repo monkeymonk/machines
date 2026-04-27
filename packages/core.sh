@@ -41,14 +41,14 @@ CORE_PACKAGES=(
   yq
 )
 
-# Cargo packages (Rust-based CLI tools)
+# Cargo packages as "crate:binary" tuples — the binary is what we check on
+# PATH to decide whether the crate is already installed. Defaults to crate
+# when no binary is given.
 CARGO_PACKAGES=(
-  bat          # Better cat with syntax highlighting
-  fd-find      # Modern find alternative
-  exa          # Modern ls alternative
-  bob-nvim     # Neovim version manager
-  zoxide       # Smarter cd command
-  # yazi-fm moved to custom installer (uses binary release)
+  "bat"
+  "fd-find:fd"
+  "bob-nvim:bob"
+  "zoxide"
 )
 
 install_cargo_packages() {
@@ -72,25 +72,21 @@ install_cargo_packages() {
     source "$HOME/.cargo/env"
   fi
 
-  for pkg in "${CARGO_PACKAGES[@]}"; do
-    # Extract command name from package name (e.g., "bob-nvim" -> "bob")
-    local cmd_name
-    if [[ "$pkg" == *"-"* ]]; then
-      cmd_name="${pkg%%-*}"
-    else
-      cmd_name="$pkg"
-    fi
+  for entry in "${CARGO_PACKAGES[@]}"; do
+    local crate="${entry%%:*}"
+    local bin="${entry#*:}"
+    [[ "$bin" == "$entry" ]] && bin="$crate"
 
-    if command -v "$cmd_name" >/dev/null 2>&1; then
-      log_info "$pkg already installed"
+    if command -v "$bin" >/dev/null 2>&1; then
+      log_info "$crate already installed"
       continue
     fi
 
     if [[ "$dry_run" == true ]]; then
-      log_info "Would install cargo package: $pkg (dry-run)"
+      log_info "Would install cargo package: $crate (dry-run)"
     else
-      log_info "Installing cargo package: $pkg"
-      cargo install "$pkg"
+      log_info "Installing cargo package: $crate"
+      cargo install "$crate"
     fi
   done
 }
@@ -116,9 +112,6 @@ install_core_packages() {
   # Install cargo packages (requires rustup)
   install_cargo_packages
 
-  # Install yazi (uses binary release, not cargo)
+  # Install yazi (uses installer for distro-specific paths)
   install_package yazi
-
-  # Install version managers
-  install_package nvm
 }
