@@ -62,11 +62,8 @@ It does **not**:
 The repo lives at:
 
 ```bash
-~/.config/machines
+~/machines
 ```
-
-This keeps it clearly separated from my bare dotfiles repo (which typically
-lives at `$HOME` with a different Git setup).
 
 ---
 
@@ -127,8 +124,8 @@ Design rules:
 Clone the repository:
 
 ```bash
-git clone <repo-url> ~/.config/machines
-cd ~/.config/machines
+git clone <repo-url> ~/machines
+cd ~/machines
 ```
 
 Run the installer:
