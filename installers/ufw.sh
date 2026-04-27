@@ -42,7 +42,10 @@ _ufw_apply_default_profile() {
   sudo ufw default allow outgoing
   sudo ufw limit ssh
   log_info "Enabling ufw"
-  sudo ufw --force enable
+  if ! sudo ufw --force enable; then
+    log_warn "ufw enable failed (kernel iptables modules unavailable?); rules saved, enable manually"
+    return 0
+  fi
   log_info "UFW configured: deny incoming, allow outgoing, rate-limit SSH"
 }
 
