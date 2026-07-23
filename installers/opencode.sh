@@ -39,9 +39,13 @@ install_opencode() {
     installer_cmd="bunx oh-my-opencode install"
   elif command_exists npx; then
     installer_cmd="npx oh-my-opencode install"
+  elif command_exists mise; then
+    log_info "No bunx/npx on PATH; bootstrapping Node.js via mise"
+    mise use -g node@lts
+    installer_cmd="mise exec -- npx oh-my-opencode install"
   else
-    log_warn "bunx or npx not found, skipping oh-my-opencode setup"
-    log_info "Install Node.js/npm or Bun, then run: npx oh-my-opencode install"
+    log_warn "bunx, npx, and mise all missing; skipping oh-my-opencode setup"
+    log_info "Install mise (or Node/Bun), then run: npx oh-my-opencode install"
     return 0
   fi
 

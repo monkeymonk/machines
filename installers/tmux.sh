@@ -6,43 +6,6 @@ install_tmux() {
 
   log_info "Installing tmux stack"
 
-  ensure_pip() {
-    if command_exists pip3 || command_exists pip; then
-      return 0
-    fi
-
-    if is_debian_like; then
-      pkg_install python3-pip
-    elif is_arch; then
-      pkg_install python-pip
-    elif is_macos; then
-      if ! command_exists brew; then
-        log_error "Homebrew not available; cannot install python for tmuxp"
-        return 1
-      fi
-      brew install python
-    else
-      log_error "Unsupported distro for tmuxp install"
-      return 1
-    fi
-  }
-
-  pip_user_install() {
-    local pkg="$1"
-    local pip_cmd
-    if command_exists pip3; then
-      pip_cmd=pip3
-    elif command_exists pip; then
-      pip_cmd=pip
-    else
-      log_error "pip not available; cannot install $pkg"
-      return 1
-    fi
-    if ! "$pip_cmd" install --user "$pkg" 2>/dev/null; then
-      "$pip_cmd" install --user --break-system-packages "$pkg"
-    fi
-  }
-
   if command_exists tmux; then
     log_info "tmux already installed"
   else
@@ -61,15 +24,14 @@ install_tmux() {
     fi
   fi
 
+  # tmuxp: prefer native package (pacman/apt/brew); fall back to `uv tool` so
+  # we don't drag pip + PEP 668 workarounds onto fresh systems.
   if command_exists tmuxp; then
     log_info "tmuxp already installed"
+  elif [[ "$dry_run" == true ]]; then
+    log_info "Would install tmuxp (dry-run)"
   else
-    if [[ "$dry_run" == true ]]; then
-      log_info "Would install tmuxp via pip (dry-run)"
-    else
-      ensure_pip
-      pip_user_install tmuxp
-    fi
+    install_tmuxp_native_or_uv
   fi
 
   local tpm_dir="$HOME/.tmux/plugins/tpm"
@@ -93,6 +55,30 @@ install_tmux() {
   else
     cargo install workmux
   fi
+}
+
+install_tmuxp_native_or_uv() {
+  if is_macos; then
+    if command_exists brew; then
+      brew install tmuxp && return 0
+    fi
+  elif is_arch || is_debian_like; then
+    if pkg_install tmuxp; then
+      return 0
+    fi
+    log_warn "native tmuxp install failed, falling back to uv"
+  fi
+
+  if ! command_exists uv; then
+    log_info "uv missing; installing it first"
+    install_package uv
+  fi
+  if ! command_exists uv; then
+    log_error "uv unavailable; cannot install tmuxp"
+    return 1
+  fi
+  log_info "Installing tmuxp via uv tool"
+  uv tool install tmuxp
 }
 
 install_tmux

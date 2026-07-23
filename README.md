@@ -92,6 +92,8 @@ machines/
 │   ├── desktop-apps.sh   #   firefox, filezilla, mpv (gui-capable hosts)
 │   ├── wayland.sh        #   cliphist, wl-clipboard, grim, slurp
 │   ├── nautilus.sh       #   nautilus + plugins
+│   ├── sharing.sh        #   avahi + nss-mdns (mDNS / .local discovery)
+│   ├── gaming.sh         #   gamemode, mangohud, protonup-qt (+lib32)
 │   ├── security.sh       #   fail2ban, ufw, openssh, auditd, logwatch
 │   ├── server-tools.sh   #   ncdu, rsync
 │   └── homelab.sh        #   net-tools, iproute2, sops
@@ -164,9 +166,9 @@ Once `install.sh` finishes, the system is ready for:
 | Role | Includes | Notes |
 |---|---|---|
 | `server` | core + security + server-tools + docker + neovim | fail2ban, ufw, openssh, auditd, logwatch |
-| `workstation` | core + shell + cli + ai-stack + desktop-apps + wayland + nautilus + neovim + tmux + opencode + docker | Desktop environment lives in `host_extras` (e.g. niri-stack) |
+| `workstation` | core + shell + cli + ai-stack + desktop-apps + wayland + nautilus + sharing + neovim + tmux + opencode + docker | Desktop environment lives in `host_extras` (e.g. niri-stack) |
 | `homelab` | server + net-tools + iproute2 + sops | Server hardening with secrets/network tools |
-| `gaming` | core + shell + dev + gaming-desktop-apps + steam + nvidia driver | Auto-detects NVIDIA hardware |
+| `gaming` | core + shell + dev + gaming-desktop-apps + sharing + vulkan + steam + gaming-stack + vr-stack | Multilib auto-enabled on Arch. Vulkan ICD per GPU (AMD/Intel/NVIDIA). VR stack is AUR-only. |
 
 `install_core_packages` runs once at the top of `main()`, before the role —
 roles compose by calling sub-installers, not by re-running core.

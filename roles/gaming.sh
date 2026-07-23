@@ -20,6 +20,11 @@ gaming_role() {
   install_shell_stack
   install_dev_packages
   install_gaming_desktop_apps
+
+  install_sharing_stack            # avahi + nss-mdns (.local resolution, wivrn discovery)
+  install_package vulkan           # vulkan loader + per-GPU ICD
+  install_package nvidia-driver    # no-op on non-NVIDIA hardware
   install_package steam
-  install_package nvidia-driver
+  install_gaming_stack             # gamemode + mangohud + protonup-qt
+  install_package vr-stack         # opencomposite + xrizer + wivrn (Arch-only)
 }

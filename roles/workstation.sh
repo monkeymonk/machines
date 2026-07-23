@@ -20,6 +20,7 @@ workstation_role() {
 
   install_wayland_utils             # cliphist + wl-clipboard + grim + slurp
   install_nautilus_stack            # nautilus + plugins
+  install_sharing_stack             # avahi + nss-mdns (.local resolution, printer discovery)
 
   install_package neovim
   install_package tmux
