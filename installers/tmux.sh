@@ -80,6 +80,19 @@ install_tmux() {
   else
     git clone https://github.com/tmux-plugins/tpm "$tpm_dir"
   fi
+
+  # workmux: git worktrees + tmux windows for parallel agents (cargo crate).
+  # shellcheck disable=SC1091
+  [[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
+  if command_exists workmux; then
+    log_info "workmux already installed"
+  elif ! command_exists cargo; then
+    log_warn "cargo not available; skipping workmux (needs rustup/core packages first)"
+  elif [[ "$dry_run" == true ]]; then
+    log_info "Would install workmux via cargo (dry-run)"
+  else
+    cargo install workmux
+  fi
 }
 
 install_tmux
