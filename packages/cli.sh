@@ -18,6 +18,7 @@ CLI_PACKAGES=(
 install_cli_tools() {
   install_package mise   # installer dispatches per distro
   install_package uv     # installer dispatches per distro
+  install_package atuin  # installer dispatches per distro
   for pkg in "${CLI_PACKAGES[@]}"; do
     install_package_with_mapping "$pkg"
   done
