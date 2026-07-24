@@ -32,6 +32,9 @@ install_nvidia_driver() {
 
   if is_arch; then
     pkg_install nvidia
+    # 32-bit userspace libs for Steam/Proton and other multilib apps. Needs
+    # [multilib] enabled (handled in bootstrap/arch.sh).
+    pkg_install lib32-nvidia-utils
   elif is_debian_like; then
     pkg_install nvidia-driver
   else

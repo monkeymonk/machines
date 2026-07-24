@@ -25,6 +25,7 @@ gaming_role() {
   install_package vulkan           # vulkan loader + per-GPU ICD
   install_package nvidia-driver    # no-op on non-NVIDIA hardware
   install_package steam
+  install_package steam-remote-play-firewall  # ufw rules for Steam Link/Remote Play + VR streaming (only if ufw present)
   install_gaming_stack             # gamemode + mangohud + protonup-qt
   install_package vr-stack         # opencomposite + xrizer + wivrn (Arch-only)
 }
