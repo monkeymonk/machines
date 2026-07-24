@@ -168,10 +168,88 @@ Once `install.sh` finishes, the system is ready for:
 | `server` | core + security + server-tools + docker + neovim | fail2ban, ufw, openssh, auditd, logwatch |
 | `workstation` | core + shell + cli + ai-stack + desktop-apps + wayland + nautilus + sharing + neovim + tmux + opencode + docker | Desktop environment lives in `host_extras` (e.g. niri-stack) |
 | `homelab` | server + net-tools + iproute2 + sops | Server hardening with secrets/network tools |
-| `gaming` | core + shell + dev + gaming-desktop-apps + sharing + vulkan + steam + gaming-stack + vr-stack | Multilib auto-enabled on Arch. Vulkan ICD per GPU (AMD/Intel/NVIDIA). VR stack is AUR-only. |
+| `gaming` | core + shell + dev + gaming-desktop-apps + sharing + vulkan + nvidia-driver + steam + steam-remote-play-firewall + gaming-stack + vr-stack | Multilib auto-enabled on Arch. Vulkan ICD per GPU (AMD/Intel/NVIDIA), plus `lib32-nvidia-utils` for 32-bit Steam/Proton. VR stack is AUR-only. See [VR / Steam Link](#vr--steam-link) for what's automated vs. manual. |
 
 `install_core_packages` runs once at the top of `main()`, before the role —
 roles compose by calling sub-installers, not by re-running core.
+
+---
+
+## VR / Steam Link
+
+The `gaming` role targets streaming VR to a standalone headset (Meta Quest,
+Pico) via **Steam Link** — the game runs on the PC and SteamVR streams frames
+to the headset over the LAN. Reference setup: CachyOS + Niri/Wayland + Meta
+Quest + Half-Life: Alyx.
+
+### What the role automates
+
+| Piece | Handled by |
+|---|---|
+| Steam client | `installers/steam.sh` |
+| Vulkan runtime + 32-bit ICD (AMD/Intel/NVIDIA) | `installers/vulkan.sh` (+ `lib32-nvidia-utils` from `nvidia-driver.sh`) |
+| Headset discovery (mDNS / `.local`) | `packages/sharing.sh` — avahi + nss-mdns |
+| OpenVR→OpenXR + wireless runtime | `installers/vr-stack.sh` — opencomposite, xrizer, wivrn (AUR-only) |
+| Firewall ports for Steam Link / Remote Play / VR streaming | `installers/steam-remote-play-firewall.sh` |
+
+### Firewall ports
+
+Steam Link, Remote Play, and VR streaming need inbound ports open. On a box
+with **no firewall these are already reachable** — the gaming role does not pull
+in the security stack, so it does not install or enable `ufw`. But if `ufw` *is*
+present (e.g. installed separately), its default `deny incoming` silently drops
+the headset's packets and the PC shows up greyed-out in Steam Link.
+
+`installers/steam-remote-play-firewall.sh` closes that gap. It runs only when
+`ufw` is already installed, and adds LAN-scoped allow rules (never global):
+
+| Ports | Proto | Purpose |
+|---|---|---|
+| 27031, 27036 | UDP | Remote Play discovery + streaming |
+| 27036, 27037 | TCP | Remote Play |
+| 10400, 10401 | UDP | VR streaming (Steam Link → SteamVR) |
+
+The LAN subnet is auto-detected from the default-route interface. Override it
+when detection is wrong or the box has multiple NICs:
+
+```bash
+STEAM_LAN_SUBNET=192.168.128.0/23 ./install.sh --role gaming
+```
+
+Rules are added with `ufw allow` (idempotent — duplicates are skipped) and are
+refused for non-private subnets as a safety guard. Verify with
+`sudo ufw status numbered`.
+
+### Manual steps (not automatable)
+
+- **Steam Link on the headset** — install the Steam Link app on the Quest/Pico
+  from its store; it is not a PC package.
+- **Enable Remote Play** — Steam → Settings → Remote Play → Enable Remote Play.
+- **In-Steam content** — install SteamVR and the VR title (e.g. Half-Life:
+  Alyx) from within Steam.
+- **SteamVR on Wayland (Niri/wlroots)** — `vrmonitor` can crash trying to load a
+  Wayland Qt plugin. Set a per-game launch option (stored in Steam's own config,
+  so the bootstrap can't set it) under SteamVR → Properties → Launch Options:
+
+  ```bash
+  QT_QPA_PLATFORM=xcb %command%
+  ```
+
+  Stronger fallback if it still crashes: `WAYLAND_DISPLAY= QT_QPA_PLATFORM=xcb %command%`.
+- **Network** — wire the PC by Ethernet, keep the headset on 5/6 GHz Wi-Fi on
+  the same subnet, and avoid guest/client/AP isolation. VPN or virtual
+  interfaces (WireGuard, Tailscale, ZeroTier) can make VRLink bind the wrong
+  NIC — disable them while streaming if the PC won't connect.
+
+### Quick checks
+
+```bash
+# Steam is listening on the streaming ports
+ss -lntup | grep -E ':(27031|27036|27037|10400|10401)\b'
+
+# UFW rules applied
+sudo ufw status numbered
+```
 
 ---
 
