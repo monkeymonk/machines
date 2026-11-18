@@ -47,8 +47,10 @@ source_if_exists "$HOST_FILE"
 
 AVAILABLE_ROLES=(server workstation gaming homelab)
 ROLE="${ROLE:-server}"
+ROLE_EXPLICIT=false
 DRY_RUN=false
 EXTRA_PACKAGES=""
+ONLY_PACKAGES=""
 
 usage() {
   cat <<EOF
@@ -57,6 +59,7 @@ Usage: $0 [options]
 Options:
   --role ROLE          Choose a role (default: server)
   --packages PKGS      Install additional packages (comma-separated)
+  --only PKGS          Install only these packages/recipes (comma-separated); skips bootstrap, core packages, role and host extras
   --dry-run            Show actions without installing
   -h|--help            Display this help message
 
@@ -78,6 +81,7 @@ parse_args() {
         exit 1
       fi
       ROLE="$2"
+      ROLE_EXPLICIT=true
       shift 2
       ;;
     --packages)
@@ -87,6 +91,15 @@ parse_args() {
         exit 1
       fi
       EXTRA_PACKAGES="$2"
+      shift 2
+      ;;
+    --only)
+      if [[ -z "${2:-}" ]]; then
+        log_error "--only requires a value"
+        usage
+        exit 1
+      fi
+      ONLY_PACKAGES="$2"
       shift 2
       ;;
     --dry-run)
@@ -109,6 +122,11 @@ parse_args() {
   done
   if [[ "$valid" != true ]]; then
     log_error "Role must be one of: ${AVAILABLE_ROLES[*]}"
+    usage
+    exit 1
+  fi
+  if [[ -n "$ONLY_PACKAGES" ]] && [[ -n "$EXTRA_PACKAGES" || "$ROLE_EXPLICIT" == true ]]; then
+    log_error "--only cannot be combined with --packages or --role"
     usage
     exit 1
   fi
@@ -153,13 +171,10 @@ run_role() {
   esac
 }
 
-install_extra_packages() {
-  if [[ -z "$EXTRA_PACKAGES" ]]; then
-    return 0
-  fi
-  log_info "Installing extra packages: $EXTRA_PACKAGES"
+install_packages_csv() {
+  local csv="$1"
   local IFS=','
-  read -r -a packages <<<"$EXTRA_PACKAGES"
+  read -r -a packages <<<"$csv"
   for pkg in "${packages[@]}"; do
     # Trim whitespace
     pkg="${pkg#"${pkg%%[![:space:]]*}"}"
@@ -168,6 +183,20 @@ install_extra_packages() {
       install_package "$pkg"
     fi
   done
+}
+
+install_extra_packages() {
+  if [[ -z "$EXTRA_PACKAGES" ]]; then
+    return 0
+  fi
+  log_info "Installing extra packages: $EXTRA_PACKAGES"
+  install_packages_csv "$EXTRA_PACKAGES"
+}
+
+install_only_packages() {
+  log_info "Installing only: $ONLY_PACKAGES"
+  install_packages_csv "$ONLY_PACKAGES"
+  log_info "Only-mode installation completed"
 }
 
 run_host_extras() {
@@ -183,6 +212,10 @@ main() {
   parse_args "$@"
   log_info "Starting bootstrap for $DISTRO"
   ensure_supported_distro
+  if [[ -n "$ONLY_PACKAGES" ]]; then
+    install_only_packages
+    return 0
+  fi
   run_bootstrap_hook
   pkg_update
   install_core_packages

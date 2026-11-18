@@ -27,4 +27,5 @@ workstation_role() {
   install_package opencode
 
   install_package docker            # group + service via installers/docker.sh
+  install_package sbx               # Docker Sandboxes CLI (install + update)
 }

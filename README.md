@@ -147,6 +147,13 @@ Install extra packages on demand:
 ./install.sh --packages "htop, jq, bat"
 ```
 
+Install only a specific package or recipe, skipping bootstrap, core packages,
+role, and host extras entirely:
+
+```bash
+./install.sh --only sbx
+```
+
 Add host-specific overrides by creating `hosts/<hostname>.sh`. The file is
 auto-loaded based on the current hostname. It can set `ROLE` and define a
 `host_extras()` function that runs after the role completes. Gate
