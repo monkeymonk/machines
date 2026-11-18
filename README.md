@@ -88,7 +88,7 @@ machines/
 │   ├── cli.sh            #   fzf, ripgrep, fd, bat, eza, jq, mise, uv, atuin, …
 │   ├── dev.sh            #   slot for extra dev-only packages
 │   ├── shell.sh          #   zsh + oh-my-zsh
-│   ├── ai.sh             #   ollama + llama-cpp + llama-swap
+│   ├── ai.sh             #   rocm + ollama + llama-cpp + llama-swap
 │   ├── desktop-apps.sh   #   firefox, filezilla, mpv (gui-capable hosts)
 │   ├── wayland.sh        #   cliphist, wl-clipboard, grim, slurp
 │   ├── nautilus.sh       #   nautilus + plugins
@@ -173,7 +173,7 @@ Once `install.sh` finishes, the system is ready for:
 | Role | Includes | Notes |
 |---|---|---|
 | `server` | core + security + server-tools + docker + neovim | fail2ban, ufw, openssh, auditd, logwatch |
-| `workstation` | core + shell + cli + ai-stack + desktop-apps + wayland + nautilus + sharing + neovim + tmux + opencode + docker | Desktop environment lives in `host_extras` (e.g. niri-stack) |
+| `workstation` | core + shell + cli + ai-stack + desktop-apps + wayland + nautilus + sharing + neovim + tmux + opencode + pi + pi-extensions + docker | Desktop environment lives in `host_extras` (e.g. niri-stack). `ai-stack` also pulls host ROCm on AMD machines (skipped when no AMD GPU is present). See [Pi extensions](#pi-extensions) for what pi-extensions installs. |
 | `homelab` | server + net-tools + iproute2 + sops | Server hardening with secrets/network tools |
 | `gaming` | core + shell + dev + gaming-desktop-apps + sharing + vulkan + nvidia-driver + steam + steam-remote-play-firewall + gaming-stack + vr-stack | Multilib auto-enabled on Arch. Vulkan ICD per GPU (AMD/Intel/NVIDIA), plus `lib32-nvidia-utils` for 32-bit Steam/Proton. VR stack is AUR-only. See [VR / Steam Link](#vr--steam-link) for what's automated vs. manual. |
 
@@ -257,6 +257,98 @@ ss -lntup | grep -E ':(27031|27036|27037|10400|10401)\b'
 # UFW rules applied
 sudo ufw status numbered
 ```
+
+## Pi extensions
+
+The `workstation` role installs [Pi](https://github.com/earendil-works/pi) — a
+minimal, extensible coding-agent CLI — plus a curated set of community
+extensions that close the capability gap with [Oh My Pi](https://omp.sh)
+(omp), which ships LSP, an MCP client, subagents, a TODO tool, plan mode, and
+Docker sandboxing built in. Pi's core has none of that; it gets them through
+`pi install npm:<pkg>` instead, which is Pi's own package manager, not the OS
+one this repo otherwise wraps.
+
+### What `pi-extensions` installs
+
+| Capability | Extension | Matches omp's |
+|---|---|---|
+| LSP, lint, format | `pi-lens` | built-in `lsp` tool |
+| MCP client | `pi-mcp-adapter` | built-in MCP support |
+| Subagents | `@tintinweb/pi-subagents` | `task`/`agents` |
+| TODO | `@juicesharp/rpiv-todo` | built-in todo overlay |
+| Structured ask-user | `@juicesharp/rpiv-ask-user-question` | built-in ask tool |
+| Plan mode | `@narumitw/pi-plan-mode` | `--plan`/`--plan-yolo` |
+| Docker sandboxing | `@christianmoesl/pi-sbx` | `sbx-sandbox` skill |
+
+The `sbx` CLI itself (that `pi-sbx` talks to) is installed and kept updated
+separately, by `installers/sbx.sh` as part of the workstation role.
+
+Those seven are installed unconditionally — they mirror something omp ships
+by default, so there's no real reason not to have them.
+
+Five more are prompted for interactively (skipped with instructions in
+non-interactive/dry-run runs) — either newer/single-maintainer with no long
+track record, or a genuine enhancement omp doesn't ship either:
+
+| Capability | Extension | Note |
+|---|---|---|
+| Python execution | `@nteract/pi` | Persistent notebook-backed Python REPL; also installs the separate `runtimed` daemon it shells out to (native binary, not an npm dependency) |
+| ACP server | `pi-acp` | Bridges Pi to ACP editors (Zed, …) over stdio JSON-RPC |
+| Long-term memory | `pi-memory` | qmd-powered semantic search across sessions; not an omp built-in, but 34k downloads/month |
+| Session handoff/search | `pi-sessions` | Search, indexing, auto-titling, cross-session handoff/messaging; partial answer to omp's collab/share, modest adoption |
+| Lazy extension loading | `pi-lazy-extensions` | Loads other extensions on demand instead of eagerly; worth it once you're running this many. Same author as `pi-web-access`/`pi-mcp-adapter` |
+
+Pi extensions run with full system access — review the source before
+accepting any prompt, same trust bar as anything installed elsewhere in
+this repo.
+
+Considered and deliberately left out (not in the script; install manually if
+wanted):
+
+| Extension | Why not |
+|---|---|
+| `pi-browser-cdp-extension` | 79 downloads/month; redundant with the `chrome-devtools-mcp` path `pi-mcp-adapter` already exposes |
+| `@nicknisi/pi-handoff` | Duplicates this ecosystem's own `prepare-handoff` skill (aic-packages) at the prompt layer; personal-scoped, 386 downloads/month |
+| `@arhen/pi-core-skill-tool` | A system-prompt token-savings tweak (skill catalog → lazy tool), not a capability gap; 461 downloads/month |
+| `pi-web-access` | Already installed on this machine (web search/fetch/PDF/video) — predates this script, nothing to add |
+| `@pi-kaush/pi-better-read-edit` | **Confirmed broken in practice**: registers its own `read`/`edit` tools, which fatally conflicts with `pi-sbx` (core, above) wrapping the same two tool names — Pi refuses to start with both installed (`Tool "read" conflicts with ...`). `pi-sbx` is the higher-value, higher-adoption, core-parity match (omp's Docker sandboxing) and won the tiebreak; don't reinstall `pi-better-read-edit` without dropping `pi-sbx` first |
+
+### Manual steps (not automatable)
+
+- **Browser automation** (`chrome-devtools-mcp`) is wired by a separate
+  `aic-packages` MCP config, not by this repo. `pi-extensions.sh` checks that
+  Docker and `runtimed` are present; it prints a reminder to verify
+  `~/.pi/agent/mcp.json` and run `aic sync` there if the entry is missing.
+- **Project trust** — Pi's `defaultProjectTrust: ask` blocks even
+  non-interactive `pi -p` runs on new projects until you accept the prompt
+  once, interactively.
+- **ACP client wiring** (Zed, etc.) — editor-side config; not this repo's job.
+
+### Startup warnings that are expected, not bugs
+
+- `No sbx sandbox is active for <dir>. Tool calls will run on the host.` —
+  `pi-sbx` only routes tools through Docker sbx once you run
+  `sbx create --template <image> shell .` in that specific project; it isn't,
+  and shouldn't be, active everywhere by default. `pi`/`omp` also aren't
+  native `sbx create` agents — see `aic-packages`' `sbx-sandbox` skill for the
+  (experimental) custom-template path. The `sbx` binary itself is installed
+  and updated by `installers/sbx.sh` (workstation role), independently of
+  the `pi-sbx` extension.
+- `Anthropic subscription auth is active. Third-party harness usage draws
+  from extra usage...` — has nothing to do with any extension here. It's Pi
+  telling you that running a Claude subscription (Pro/Max OAuth) through a
+  third-party harness like Pi bills per-token against extra usage rather than
+  the subscription's flat quota — a fact about your auth method, not this
+  repo. Silence it from Pi's own `/settings` if you don't want the reminder.
+
+### Re-running
+
+```bash
+./install.sh --role workstation --packages "pi, pi-extensions"
+```
+
+Both installers are idempotent: already-installed extensions are detected via
+`~/.pi/agent/settings.json` and skipped.
 
 ---
 

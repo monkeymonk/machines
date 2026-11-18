@@ -25,6 +25,8 @@ workstation_role() {
   install_package neovim
   install_package tmux
   install_package opencode
+  install_package pi                # minimal coding-agent CLI (via mise)
+  install_package pi-extensions     # LSP/MCP/subagents/todo/plan/sbx parity with omp
 
   install_package docker            # group + service via installers/docker.sh
   install_package sbx               # Docker Sandboxes CLI (install + update)
