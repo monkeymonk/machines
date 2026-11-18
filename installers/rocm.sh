@@ -3,10 +3,15 @@ set -euo pipefail
 
 # ROCm runtime + HIP for AMD GPUs. Skipped if no AMD GPU is present.
 #
-# Strix Point (Radeon 890M / 880M, gfx1150) isn't in ROCm's officially
-# supported list yet — runtime/plugins/amdgpu.sh exports
-# HSA_OVERRIDE_GFX_VERSION=11.0.0 to claim gfx1100 so HIP binaries run.
-# llama.cpp here uses Vulkan; ROCm mainly benefits PyTorch / ONNX / rocm-smi.
+# Strix Point (Radeon 890M, gfx1150) is officially supported as of ROCm
+# 7.14.0 and 10.1.0 (AMD's compatibility matrix lists it under RDNA 3.5).
+# No GFX-version override is needed on this hardware; only introduce one in
+# response to a demonstrated, reproduced failure, not pre-emptively.
+#
+# llama.cpp and Ollama here run on their Vulkan builds and don't need ROCm;
+# containerized PyTorch workloads bring their own ROCm userspace in the
+# image. Host ROCm mainly buys HIP/OpenCL for host-side work plus rocminfo
+# for diagnostics.
 
 has_amd_gpu() {
   if command_exists lspci; then
@@ -57,10 +62,19 @@ install_rocm() {
   add_user_to_group video
 
   if command_exists rocminfo; then
-    if rocminfo >/dev/null 2>&1; then
+    # `id -nG` with no argument reports the groups active in *this* process;
+    # passing a username re-reads the group database, which add_user_to_group
+    # has just updated. Only the former can tell whether the new membership
+    # is live yet, which is the whole point of the check.
+    local session_groups
+    session_groups="$(id -nG 2>/dev/null | tr ' ' '\n')"
+
+    if ! grep -qx render <<<"$session_groups" || ! grep -qx video <<<"$session_groups"; then
+      log_warn "render/video membership is not active in this session yet; log out and back in, then re-check rocminfo"
+    elif rocminfo 2>/dev/null | grep -q 'Device Type:.*GPU'; then
       log_info "rocminfo: GPU detected by ROCm"
     else
-      log_warn "rocminfo failed — group changes take effect at next login"
+      log_warn "rocminfo ran but reported no GPU agent; check the amdgpu driver (dmesg), not group membership"
     fi
   fi
 }
