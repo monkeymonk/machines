@@ -10,6 +10,7 @@ CLI_PACKAGES=(
   "ripgrep"
   "bat"
   "zoxide"
+  "direnv"
   "eza,debian:eza"
   "jq"
   "yq"
