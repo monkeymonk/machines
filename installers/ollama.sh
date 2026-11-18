@@ -83,9 +83,11 @@ install_ollama() {
 
   local models=()
 
-  # Check if models specified via environment variable
-  if [[ -n "${OLLAMA_MODELS:-}" ]]; then
-    read -r -a models <<<"$OLLAMA_MODELS"
+  # Check if models specified via environment variable.
+  # Note: use OLLAMA_PULL_MODELS, not OLLAMA_MODELS — the latter is Ollama's own
+  # variable for the model storage directory and must not be overloaded here.
+  if [[ -n "${OLLAMA_PULL_MODELS:-}" ]]; then
+    read -r -a models <<<"$OLLAMA_PULL_MODELS"
   elif [[ "$dry_run" == false ]] && [[ -t 0 ]]; then
     # Interactive mode: present menu of available models
     echo ""
